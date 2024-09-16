@@ -1,7 +1,8 @@
 # Template Service
-```diff
-<span style="color:green;">Approved by Eldar</span>
-```
+
+> [!TIP]
+> Approved by Eldar.
+
 ## Components & Structure
 
 ### FastAPI
