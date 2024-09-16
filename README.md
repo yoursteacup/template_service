@@ -4,15 +4,15 @@
 
 ### FastAPI
 
-1. **app.routers** - Implement your own routes
-2. **app.keepers** - Implement your logic for routes
-3. **app.dependencies** - Implement your router dependencies
-4. **app.services** - Implement your services
+1. **./app/routers/** - Implement your own routes
+2. **./app/keepers/** - Implement your logic for routes
+3. **./app/dependencies/** - Implement your router dependencies
+4. **./app/services/** - Implement your services
 
 ### SQLAlchemy & Alembic
 
-1. **app.models.py** - Implement your own models
-2. **alembic** - Your database migrations 
+1. **./app/models.py** - Implement your own models
+2. **./alembic** - Your database migrations 
 
 ## Usage & Workflow
 
