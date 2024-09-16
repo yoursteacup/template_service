@@ -1,5 +1,7 @@
 # Template Service
-
+```diff
++ text in green
+```
 ## Components & Structure
 
 ### FastAPI
