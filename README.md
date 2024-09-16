@@ -1,7 +1,7 @@
 # Template Service
 
-> [!TIP]
-> Approved by Eldar.
+$\color{green}{Approved} \space { by } \space {Eldar.}$
+
 
 ## Components & Structure
 
