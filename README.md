@@ -1,6 +1,6 @@
 # Template Service
 ```diff
-Approved by Eldar
+<span style="color:green;">Approved by Eldar</span>
 ```
 ## Components & Structure
 
