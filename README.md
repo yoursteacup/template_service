@@ -1,6 +1,6 @@
 # Template Service
 ```diff
-+ text in green
+Approved by Eldar
 ```
 ## Components & Structure
 
