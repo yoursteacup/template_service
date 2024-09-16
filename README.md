@@ -1,31 +1,33 @@
-# Template Service
+# Шаблон сервиса
 
-$\color{green}{Approved} \space { by } \space {Eldar.}$
+$\color{red}{Составлено} \space {Дәулетом.}$
+
+$\color{green}{Одобрено} \space {Эльдаром.}$
 
 
-## Components & Structure
+## Компоненты и структура
 
 ### FastAPI
 
-1. **./app/routers/** - Implement your own routes
-2. **./app/keepers/** - Implement your logic for routes
-3. **./app/dependencies/** - Implement your router dependencies
-4. **./app/services/** - Implement your services
+1. **./app/routers/** - Реализуйте свои маршруты
+2. **./app/keepers/** - Реализуйте свою логику для маршрутов
+3. **./app/dependencies/** - Реализуйте зависимости для маршрутов
+4. **./app/services/** - Реализуйте свои сервисы
 
 ### SQLAlchemy & Alembic
 
-1. **./app/models.py** - Implement your own models
-2. **./alembic** - Your database migrations 
+1. **./app/models.py** - Реализуйте свои модели
+2. **./alembic** - Ваши миграции базы данных
 
-## Usage & Workflow
+## Использование и рабочий процесс
 
-### Database & Models
+### База данных и модели
 
-1. Implement your models
-2. Implement your `.env` from `.env.example`
-3. Run `alembic revision --autogenerate -m "your revision name;"`
-4. Run `chmod +x ./entrypoint.sh & ./entrypoint.sh` to migrate and start app or `alembic upgrade -head` to run migrations only
+1. Реализуйте свои модели
+2. Настройте файл `.env` на основе `.env.example`
+3. Выполните команду `alembic revision --autogenerate -m "название вашей ревизии";`
+4. Выполните `chmod +x ./entrypoint.sh & ./entrypoint.sh` для миграции и запуска приложения или `alembic upgrade -head` для запуска только миграций
 
-### Running Application
+### Запуск приложения
 
-1. Just run `chmod +x ./entrypoint.sh & ./entrypoint.sh`
+1. Просто выполните команду `chmod +x ./entrypoint.sh & ./entrypoint.sh`
