@@ -30,7 +30,7 @@ __pycache__/
 .env
 EOT
 
-cat <<EOT > env.example
+cat <<EOT > .env.example
 APP_PORT=8000
 APP_ALLOWED_ORIGINS='["*"]'
 APP_SECRET_KEY=r"^.{12,127}$"
