@@ -32,7 +32,7 @@ $\color{green}{Согласна} \space {Ника.}$
 
 ### Запуск приложения
 
-1. Просто выполните команду `chmod +x ./entrypoint.sh & ./entrypoint.sh`
+1. Просто выполните команду $`chmod +x ./entrypoint.sh & ./entrypoint.sh`
 
 # Как создать проект по шаблону
 
@@ -58,9 +58,9 @@ $\color{green}{Согласна} \space {Ника.}$
 
 3. В контексте виртуального окружения выполнить команды:
 
- - ``pip install -r requirements.txt``
+ - $``pip install -r requirements.txt``
 
- - ``alembic init alembic``
+ - $``alembic init alembic``
 
 4. Внести правки в файл ``./alembic/env.py``
 
@@ -82,3 +82,8 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL)
 ```
 
  - Строку ``target_metadata = None`` заменить на ``target_metadata = Base.metadata``
+
+# Автоматическое создание для Linux
+Скопируйте файл init.sh в пустую папку проекта и запустите его:
+
+$ ``chmod +x init.sh && ./init.sh``

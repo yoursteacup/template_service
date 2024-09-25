@@ -13,7 +13,7 @@ ModelType = TypeVar("ModelType", bound="Base")
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     creation_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now())
-    update_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now(), onupdate=func.now())
+    update_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now(), onupdate=sa.func.now())
 
     @classmethod
     async def get_single_entity(
@@ -41,9 +41,3 @@ class Base(DeclarativeBase):
         if not result_list:
             return None
         return result_list
-
-
-class DefaultModel(Base):
-    __tablename__ = "default_model"
-
-    query_parameter: Mapped[str] = mapped_column(nullable=True)
