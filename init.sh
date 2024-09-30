@@ -59,20 +59,67 @@ RUN chmod +x /entrypoint.sh
 CMD ["/entrypoint.sh"]
 EOT
 
+cat <<EOT > app/services/sessionmaking.py
+import os
+from dotenv import load_dotenv
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
+load_dotenv()
+DATABASE_URL = f"postgresql+asyncpg://{os.getenv('POSTGRES_USERNAME')}"
+    f":{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}"
+    f":{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DATABASE')}"
+
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
+async def get_session() -> AsyncSession:
+    async with async_session() as session:
+        yield session
+
+EOT
+
 cat <<EOT > app/models.py
+import enum
+import json
 from datetime import datetime
+from datetime import date
 from typing import TypeVar
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+
 
 ModelType = TypeVar("ModelType", bound="Base")
 
 
-class Base(DeclarativeBase):
+class Serializable:
+    def to_json(self, exclude=None):
+        if exclude is None:
+            exclude = []
+
+        columns = {}
+        for c in class_mapper(self.__class__).columns:
+            if c.key not in exclude:
+                value = getattr(self, c.key)
+
+                # Convert datetime to ISO format
+                if isinstance(value, datetime):
+                    columns[c.key] = value.isoformat()
+                else:
+                    columns[c.key] = value
+
+        return columns
+
+
+class Base(DeclarativeBase, Serializable):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     creation_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now())
     update_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now(), onupdate=sa.func.now())
@@ -103,6 +150,98 @@ class Base(DeclarativeBase):
         if not result_list:
             return None
         return result_list
+
+
+class RequestLogs(Base):
+    __tablename__ = "request_logs"
+
+    method: Mapped[str] = mapped_column()
+    endpoint: Mapped[str] = mapped_column()
+    status_code: Mapped[int] = mapped_column()
+    client_ip: Mapped[str] = mapped_column(nullable=True)
+    proxy_ip: Mapped[str] = mapped_column(nullable=True)
+
+
+class LogLevel(enum.Enum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    DEBUG = "DEBUG"
+
+
+class ApplicationLogs(Base):
+    __tablename__ = "application_logs"
+
+    message: Mapped[str] = mapped_column()
+    level: Mapped[LogLevel] = mapped_column(sa.String)
+    context: Mapped[str] = mapped_column()
+
+EOT
+
+cat <<EOT > app/services/logging_service.py
+import enum
+import inspect
+import logging
+
+from app.models import ApplicationLogs
+from app.services.sessionmaking import get_session
+
+
+class LogLevel(enum.Enum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    DEBUG = "DEBUG"
+
+
+class LogService:
+    def __init__(self):
+        pass
+
+    async def log(self, message: str, level: LogLevel):
+        frame = inspect.currentframe().f_back.f_back
+        filename = frame.f_code.co_filename
+        line_number = frame.f_lineno
+        function_name = frame.f_code.co_name
+
+        context = f"{filename}:{line_number} in {function_name}"
+
+        logging.log(self._get_logging_level(level), f"{level.name}: {message} (Context: {context})")
+
+        async for session in get_session():
+            new_log = ApplicationLogs(
+                message=message,
+                level=level.value,
+                context=context,
+            )
+
+            session.add(new_log)
+            await session.commit()
+
+    async def log_info(self, message: str):
+        await self.log(message, LogLevel.INFO)
+
+    async def log_warning(self, message: str):
+        await self.log(message, LogLevel.WARNING)
+
+    async def log_error(self, message: str):
+        await self.log(message, LogLevel.ERROR)
+
+    async def log_debug(self, message: str):
+        await self.log(message, LogLevel.DEBUG)
+
+    @staticmethod
+    def _get_logging_level(level: LogLevel):
+        match level:
+            case LogLevel.INFO:
+                return logging.INFO
+            case LogLevel.WARNING:
+                return logging.WARNING
+            case LogLevel.ERROR:
+                return logging.ERROR
+            case LogLevel.DEBUG:
+                return logging.DEBUG
+
 EOT
 
 cat <<EOT > app/__main__.py
@@ -133,7 +272,53 @@ if __name__ == "__main__":
 
 EOT
 
-python3.12 -m venv .venv
+cat <<EOT > app/logging_middleware.py
+import logging
+from datetime import datetime
+
+from fastapi import Request
+
+from app.models import RequestLogs
+from app.services.sessionmaking import get_session
+
+from __main__ import app
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logging.info(f"Request: {request.method} {request.url.path}")
+
+    start_time = datetime.now()
+    response = await call_next(request)
+    process_time = (datetime.now() - start_time).total_seconds()
+    client_ip = request.headers.get('X-Forwarded-For')
+    proxy_ip = request.client.host
+
+    if client_ip is None:
+        client_ip = proxy_ip
+
+    logging.info(
+        f"Response: {response.status_code} for {request.method} {request.url.path} (Duration: {process_time}s)"
+    )
+
+    async for session in get_session():
+        log_entry = RequestLogs(
+            method=request.method,
+            endpoint=request.url.path,
+            status_code=response.status_code,
+            client_ip=client_ip,
+            proxy_ip=proxy_ip,
+        )
+        session.add(log_entry)
+        await session.commit()
+
+    return response
+
+EOT
+
+if [ ! -d ".venv" ]; then
+  python3.12 -m venv .venv
+fi
 . .venv/bin/activate
 pip install -r requirements.txt
 alembic init alembic
@@ -183,3 +368,6 @@ if grep -q "target.metadata = None" "$ALEMBIC_ENV_FILE"; then
   echo "Replacing 'target.metadata = None' with 'target_metadata = Base.metadata'..."
   sed -i 's/target.metadata = None/target_metadata = Base.metadata/' "$ALEMBIC_ENV_FILE"
 fi
+
+alembic revision --autogenerate -m "initial"
+chmod +x ./entrypoint.sh
