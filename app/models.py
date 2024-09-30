@@ -1,16 +1,38 @@
+import enum
 from datetime import datetime
 from typing import TypeVar
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+
 
 ModelType = TypeVar("ModelType", bound="Base")
 
 
-class Base(DeclarativeBase):
+class Serializable:
+    def to_json(self, exclude=None):
+        if exclude is None:
+            exclude = []
+
+        columns = {}
+        for c in class_mapper(self.__class__).columns:
+            if c.key not in exclude:
+                value = getattr(self, c.key)
+
+                # Convert datetime to ISO format
+                if isinstance(value, datetime):
+                    columns[c.key] = value.isoformat()
+                else:
+                    columns[c.key] = value
+
+        return columns
+
+
+class Base(DeclarativeBase, Serializable):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     creation_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now())
     update_date: Mapped[datetime] = mapped_column(insert_default=sa.func.now(), onupdate=sa.func.now())
@@ -41,3 +63,29 @@ class Base(DeclarativeBase):
         if not result_list:
             return None
         return result_list
+
+
+class RequestLogs(Base):
+    __tablename__ = "request_logs"
+
+    method: Mapped[str] = mapped_column()
+    endpoint: Mapped[str] = mapped_column()
+    status_code: Mapped[int] = mapped_column()
+    client_ip: Mapped[str] = mapped_column(nullable=True)
+    proxy_ip: Mapped[str] = mapped_column(nullable=True)
+
+
+class LogLevel(enum.Enum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    DEBUG = "DEBUG"
+
+
+class ApplicationLogs(Base):
+    __tablename__ = "application_logs"
+
+    message: Mapped[str] = mapped_column()
+    level: Mapped[LogLevel] = mapped_column(sa.String)
+    context: Mapped[str] = mapped_column()
+
